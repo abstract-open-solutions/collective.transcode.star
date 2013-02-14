@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from base64 import b64encode
 import transaction
 
+from Globals import DevelopmentMode
+
 from plone.registry.interfaces import IRegistry
 from persistent.dict import PersistentDict
 from collective.transcode.star.crypto import encrypt, decrypt
@@ -336,7 +338,11 @@ class TranscodeTool(BTreeContainer):
         return
 
     def errback(self, result):
-        log.info(u"%s errback for %s" % (result['profile'], result['UID']))
+        log.error(u"%s errback for %s" % (result['profile'], result['UID']))
+        if DevelopmentMode:
+            print '*' * 150
+            print result['msg']
+            print '*' * 150
         (obj, entry) = self.validate(result)
         if not obj or not entry:
             return
