@@ -1,5 +1,7 @@
 <tal:video tal:define="width view/request/width|python:630;
                        height python:int(int(width)/1.75);">
+
+
 <video id="main-video" controls
     tal:define="mp4 string:${view/profiles/mp4-low/address|nothing}/${view/profiles/mp4-low/path|nothing};
                 webm string:${view/profiles/webm-low/address|nothing}/${view/profiles/webm-low/path|nothing};
@@ -17,7 +19,8 @@
        <param name="movie" value="++resource++collective.mediaelementjs/flashmediaelement.swf" />
        <param name="flashvars" tal:attributes="value string:controls=true&poster=${jpeg}&file=${mp4}" />
        <!-- Image as a last resort -->
-       <img tal:attributes="src jpeg; width width; height height" title="No video playback capabilities" />
+       <img class="splash-screen"
+            tal:attributes="src jpeg; width width; height height" title="No video playback capabilities" />
    </object>
 </video>
 <style tal:content="string: div.videobar{width: ${width}px}" />
@@ -148,20 +151,30 @@
     </div>
 
     <ul id="dl-links" style="display:none" tal:condition="view/fieldname|nothing">
-        <li><a tal:attributes="href string:${view/context/absolute_url}/at_download/${view/fieldname}">original (<tal:size tal:content="view/display_size" />)</a></li>
-        <li><a tal:condition="view/profiles/mp4-low/address|nothing" 
+        <li><a class="original"
+               data-profilename="original"
+               tal:attributes="href string:${view/context/absolute_url}/at_download/${view/fieldname}">original (<tal:size tal:content="view/display_size" />)</a></li>
+        <li><a class="mp4-low"
+               data-profilename="mp4-low"
+               tal:condition="view/profiles/mp4-low/address|nothing" 
                tal:attributes="href string:${view/profiles/mp4-low/address|nothing}/${view/profiles/mp4-low/path|nothing};">
                mp4 low res</a>
        </li>
-        <li><a tal:condition="view/profiles/mp4-high/address|nothing" target="new"
+        <li><a class="mp4-high"
+               data-profilename="mp4-high"
+               tal:condition="view/profiles/mp4-high/address|nothing" target="new"
                tal:attributes="href string:${view/profiles/mp4-high/address|nothing}/${view/profiles/mp4-high/path|nothing};">
                mp4 high res</a>
        </li>
-        <li><a tal:condition="view/profiles/webm-low/address|nothing" target="new"
+        <li><a class="webm-low"
+               data-profilename="webm-low"
+               tal:condition="view/profiles/webm-low/address|nothing" target="new"
                tal:attributes="href string:${view/profiles/webm-low/address|nothing}/${view/profiles/webm-low/path|nothing};">
                webm low res</a>
        </li>
-        <li><a tal:condition="view/profiles/webm-high/address|nothing" target="new"
+        <li><a class="webm-high"
+               data-profilename="webm-high"
+               tal:condition="view/profiles/webm-high/address|nothing" target="new"
                tal:attributes="href string:${view/profiles/webm-high/address|nothing}/${view/profiles/webm-high/path|nothing};">
                webm high res</a>
        </li>
