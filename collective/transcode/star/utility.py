@@ -26,8 +26,15 @@ from plone.app.async.interfaces import IAsyncService
 from collective.transcode.star.interfaces import ITranscodeTool
 from collective.transcode.star.interfaces import ITranscoded
 from collective.transcode.star.interfaces import ITranscodedEvent
+from collective.transcode.star.interfaces import ITranscodeSettings
 
 log = logging.getLogger('collective.transcode')
+
+
+def get_settings():
+    registry = getUtility(IRegistry)
+    settings = registry.forInterface(ITranscodeSettings)
+    return settings
 
 
 def transcode_request(obj, fieldName, UID,
@@ -70,7 +77,8 @@ class TranscodeTool(BTreeContainer):
            Add a portal object to the transcode queue
         """
         UID = obj.UID()
-        # If no fieldNames have been defined as transcodable, then use the primary field
+        # If no fieldNames have been defined as transcodable,
+        # then use the primary field
         # TODO: check if they are actually file fields
         if not fieldNames:
             fields = [obj.getPrimaryField()]
@@ -100,10 +108,10 @@ class TranscodeTool(BTreeContainer):
             profiles = supported_profiles
         else:
             profiles = [p for p in profiles if p in supported_profiles]
-            
+
         secret = self.secret()
         mime_types = self.supported_mime_types()
-
+        
         for profile in profiles:
             if profile not in daemonProfiles:
                 msg = u"""profile %s not supported by
@@ -184,7 +192,7 @@ class TranscodeTool(BTreeContainer):
                     'start': datetime.now(),
                     'md5': md5sum
                 })
-                
+
                 #from zope.app.component.hooks import getSite
                 #request = getSite().REQUEST
                 #if request.has_key('video_file_file') and request.has_key('form.button.save'):
@@ -205,7 +213,7 @@ class TranscodeTool(BTreeContainer):
             Get transcoding progress
         """
         tt = getUtility(ITranscodeTool)
-        
+
         try:
             address = tt.getNextDaemon()
         except Exception, e:
@@ -219,15 +227,16 @@ class TranscodeTool(BTreeContainer):
             log.error(u"Could not connect to transcode daemon %s: %s" % (address, e))
             return
         return progress
-        
-    def delete(self, obj, fieldNames = [], force = False):
+
+    def delete(self, obj, fieldNames=[], force=False):
         '''Pass an xmlrpc call to the daemon when a video is deleted'''
 
         UID = obj.UID()
         log = logging.getLogger('collective.transcode.star')
         tt = getUtility(ITranscodeTool)
 
-        # If no fieldNames have been defined as transcodable, then use the primary field
+        # If no fieldNames have been defined as transcodable,
+        # then use the primary field
         # TODO: check if they are actually file fields
         if not fieldNames:
             fields = [obj.getPrimaryField()]
@@ -246,51 +255,53 @@ class TranscodeTool(BTreeContainer):
 
         try:
             transcodeServer = xmlrpclib.ServerProxy(address)
-            daemonProfiles = transcodeServer.getAvailableProfiles()
+            transcodeServer.getAvailableProfiles()
         except Exception, e:
             log.error(u"Could not connect to transcode daemon %s: %s" % (address, e))
             return
 
         secret = tt.secret()
+
         for field in fields:
             fieldName = field.getName()
             if field.getContentType(obj) not in tt.supported_mime_types():
                 continue
             data = StringIO(field.get(obj).data)
-            md5sum = md5(data.read()).hexdigest()
+            md5(data.read()).hexdigest()
 
-            portal_url = getToolByName(obj,'portal_url')()
-            filePath = obj.absolute_url() 
+            portal_url = getToolByName(obj, 'portal_url')()
+            filePath = obj.absolute_url()
             fileUrl = portal_url + '/@@serve_daemon'
             fileType = field.getContentType(obj)
             # transliteration of stange filenames
-            fileName = field.getFilename(obj)                
+            fileName = field.getFilename(obj)
             norm = queryUtility(IIDNormalizer)
             fileName = norm.normalize(fileName.decode('utf-8'))
 
-            options = dict()
+            options = {}
             payload = {
-                      'path' : filePath,
-                      'url' : fileUrl,
-                      'type' : fileType,
-                      'fieldName' : fieldNames and fieldName or '', # don't send fieldName if it's the primary field
-                      'fileName' : fileName,
-                      'uid' : UID,
-                    }
+                'path': filePath,
+                'url': fileUrl,
+                'type': fileType,
+                # don't send fieldName if it's the primary field
+                'fieldName': fieldNames and fieldName or '',
+                'fileName': fileName,
+                'uid': UID,
+            }
 
             # Encrypt and send the transcode request
-            payload = {'key':b64encode(encrypt(str(payload), secret))}
+            payload = {'key': b64encode(encrypt(str(payload), secret))}
             transcodeServer.delete(payload, options, portal_url)
-            tt.__delitem__ ( UID )
+            tt.__delitem__(UID)
 
         return
-   
+
     def getNextDaemon(self):
         """
            Select the daemon with the minimun queueSize
         """
-        registry = getUtility(IRegistry)
-        daemons = registry['collective.transcode.star.interfaces.ITranscodeSettings.daemon_address']
+        settings = get_settings()
+        daemons = settings.daemon_address
         if len(daemons) == 0:
             log.warn(u"No transcode daemons available")
             return
@@ -300,7 +311,7 @@ class TranscodeTool(BTreeContainer):
             return str(daemons[0])
 
         # If there are more than one daemons available get the one with the minimum queue size
-        min = (-1,None)
+        min = (-1, None)
         for d in daemons:
             d = str(d)
             try:
@@ -320,17 +331,16 @@ class TranscodeTool(BTreeContainer):
         """
           Return the list of supported profiles from the registry
         """
-        registry = getUtility(IRegistry)
-        return registry['collective.transcode.star.interfaces.ITranscodeSettings.transcode_profiles']
+        settings = get_settings()
+        return settings.transcode_profiles
 
     def secret(self):
-        registry = getUtility(IRegistry)
-        return registry['collective.transcode.star.interfaces.ITranscodeSettings.secret']
+        settings = get_settings()
+        return settings.secret
 
-    def supported_mime_types(self):        
-        registry = getUtility(IRegistry)
-        return registry['collective.transcode.star.interfaces.ITranscodeSettings.mime_types']
-
+    def supported_mime_types(self):
+        settings = get_settings()
+        return settings.mime_types
 
     def is_pending(self, UID, fieldName, profile, md5sum, timeout=14400):
         """
@@ -338,28 +348,33 @@ class TranscodeTool(BTreeContainer):
         """
         try:
             entry = self[UID][fieldName][profile]
-        except Exception, e:
+        except Exception:
             return False
 
         if entry['status'] != 'pending' or entry['md5'] != md5sum:
             return False
 
         if (datetime.now() - entry['start']).seconds < timeout:
-            log.warn(u'transcode entry timed out: (%s, %s, %s, %s)' % (UID, fieldName, profile, md5sum))
+            msg = u'transcode entry timed out: (%s, %s, %s, %s)' % (UID,
+                                                                    fieldName,
+                                                                    profile,
+                                                                    md5sum)
+            log.warn(msg)
             return False
 
         return True
- 
+
     def is_transcoded(self, UID, fieldName, profile, md5sum, timeout=14400):
         """
            Check if the file has already been transcoded
         """
         try:
             entry = self[UID][fieldName][profile]
-        except Exception, e:
+        except Exception:
             return False
 
-        if entry['status'] != 'ok' or entry['md5'] != md5sum or not entry['path']:
+        if entry['status'] != 'ok' or \
+                entry['md5'] != md5sum or not entry['path']:
             return False
 
         return True
@@ -370,7 +385,9 @@ class TranscodeTool(BTreeContainer):
         if not obj or not entry:
             return
         if entry['status'] != 'pending':
-            log.warn('entry status was not pending, that should not happen: %s' % entry) 
+            msg = 'entry status was not pending, \
+            that should not happen: %s' % entry
+            log.warn(msg)
         entry['path'] = result['path']
         entry['end'] = datetime.now()
         entry['status'] = 'ok'
@@ -378,7 +395,7 @@ class TranscodeTool(BTreeContainer):
         notify(TranscodedEvent(obj, result['profile']))
         try:
             obj.reindexObject(idxs=['object_provides'])
-        except Exception, e:
+        except Exception:
             pass
         return
 
@@ -419,20 +436,24 @@ class TranscodeTool(BTreeContainer):
         try:
             entry = record[fieldName][result['profile']]
         except Exception, e:
-            log.error("No entry for fieldName %s and profile %s" % (fieldName, result['profile']))
+            msg = "No entry for fieldName %s\
+             and profile %s" % (fieldName,
+                                result['profile'])
+            log.error(msg)
             log.error("Existing entries for object: %s" % record)
             return (obj, False)
 
         return (obj, entry)
 
-    def status(self, obj, profile, fieldName = None):
+    def status(self, obj, profile, fieldName=None):
         """Check if it is transcoded with given profile"""
         if not fieldName:
             fieldName = obj.getPrimaryField().getName()
         try:
             return self[obj.UID()][fieldName][profile]['status']
-        except Exception, e:
-            return False            
+        except Exception:
+            return False
+
 
 class TranscodedEvent(ObjectEvent):
 
