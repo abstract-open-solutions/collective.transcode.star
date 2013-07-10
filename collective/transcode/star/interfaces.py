@@ -15,6 +15,15 @@ class ITranscodedEvent(IObjectEvent):
 class ITranscodeSettings(Interface):
     """Transcoding settings"""
 
+    app_address = schema.TextLine(
+        title=u'Public address',
+        description=u'The public address of your application. '
+                    u'Used for transcoding storage path.',
+        default=u'',
+        required=0,
+    )
+
+    # XXX 2013-07-10: why is this a tuple?
     daemon_address = schema.Tuple(
         title=u'Daemon address',
         value_type=schema.TextLine(title=u'address'),

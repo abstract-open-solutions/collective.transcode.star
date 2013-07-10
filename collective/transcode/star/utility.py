@@ -4,25 +4,30 @@ import pytz
 from hashlib import md5
 from datetime import datetime, timedelta
 from base64 import b64encode
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 from Globals import DevelopmentMode
-
-from plone.registry.interfaces import IRegistry
 from persistent.dict import PersistentDict
-from collective.transcode.star.crypto import encrypt
-from Products.CMFCore.utils import getToolByName
+
 from zope.interface import alsoProvides
-from StringIO import StringIO
 from zope.interface import implements
 from zope.component import getSiteManager
+from zope.component.hooks import getSite
 from zope.component.interfaces import ObjectEvent
 from zope.event import notify
-
-from zope.component import queryUtility, getUtility
-from plone.i18n.normalizer.interfaces import IIDNormalizer
 from zope.app.container.btree import BTreeContainer
+from zope.component import queryUtility, getUtility
+
+from Products.CMFCore.utils import getToolByName
+
+from plone.registry.interfaces import IRegistry
+from plone.i18n.normalizer.interfaces import IIDNormalizer
 from plone.app.async.interfaces import IAsyncService
 
+from collective.transcode.star.crypto import encrypt
 from collective.transcode.star.interfaces import ITranscodeTool
 from collective.transcode.star.interfaces import ITranscoded
 from collective.transcode.star.interfaces import ITranscodedEvent
@@ -47,9 +52,8 @@ def transcode_request(obj, fieldName, UID,
         msg = u"Could not connect to transcode daemon %s: %s" % (address, e)
         log.error(msg)
         return
-    payload = {
-        'key': b64encode(encrypt(str(payload), secret))
-    }
+
+    payload = {'key': b64encode(encrypt(str(payload), secret))}
     jobId = transcodeServer.transcode(payload, profile, options, portal_url)
     tt = getUtility(ITranscodeTool)
     if not jobId or jobId.startswith('ERROR'):
@@ -71,6 +75,17 @@ def transcode_request(obj, fieldName, UID,
 class TranscodeTool(BTreeContainer):
 
     implements(ITranscodeTool)
+
+    def get_portal_url(self):
+        settings = get_settings()
+        # get app address in order to make sure we always send transcode request
+        # for the real domain of the app. This make sure that even if you upload
+        # using FTP you do not get URLs like `http://0.0.0.0:8021/Zope2/Plone`
+        # that are not suitable for HTTP GET of original videos.
+        # This fix also cases where you need to upload videos from a different domain.
+        app_address = settings.app_address
+        portal_url = app_address or getToolByName(getSite(), 'portal_url')()
+        return portal_url
 
     def add(self, obj, fieldNames=[], force=False, profiles=[]):
         """
@@ -111,7 +126,8 @@ class TranscodeTool(BTreeContainer):
 
         secret = self.secret()
         mime_types = self.supported_mime_types()
-        
+        portal_url = self.get_portal_url()
+
         for profile in profiles:
             if profile not in daemonProfiles:
                 msg = u"""profile %s not supported by
@@ -154,8 +170,16 @@ class TranscodeTool(BTreeContainer):
                     else:
                         log.info('forcing retranscode')
 
-                portal_url = getToolByName(obj, 'portal_url')()
                 filePath = obj.absolute_url()
+                if not portal_url in filePath:
+                    # in case we have an app_address we can have a different
+                    # portal_url here. so, let's fix this.
+                    # yes, a bit ugly but it works!
+                    filePath = obj.getPhysicalPath()[2:]  # exclude zope and plone id
+                    filePath = '/'.join([
+                        portal_url.rstrip('/'),
+                    ] + list(filePath))
+
                 fileUrl = portal_url + '/@@serve_daemon'
                 fileType = field.getContentType(obj)
                 # transliteration of stange filenames
@@ -261,6 +285,7 @@ class TranscodeTool(BTreeContainer):
             return
 
         secret = tt.secret()
+        portal_url = self.get_portal_url()
 
         for field in fields:
             fieldName = field.getName()
@@ -269,7 +294,6 @@ class TranscodeTool(BTreeContainer):
             data = StringIO(field.get(obj).data)
             md5(data.read()).hexdigest()
 
-            portal_url = getToolByName(obj, 'portal_url')()
             filePath = obj.absolute_url()
             fileUrl = portal_url + '/@@serve_daemon'
             fileType = field.getContentType(obj)
