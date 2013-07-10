@@ -1,20 +1,17 @@
 import xmlrpclib
-import urllib
 import logging
 import pytz
 from hashlib import md5
-from urllib import urlencode
 from datetime import datetime, timedelta
 from base64 import b64encode
-import transaction
 
 from Globals import DevelopmentMode
 
 from plone.registry.interfaces import IRegistry
 from persistent.dict import PersistentDict
-from collective.transcode.star.crypto import encrypt, decrypt
+from collective.transcode.star.crypto import encrypt
 from Products.CMFCore.utils import getToolByName
-from zope.interface import alsoProvides, noLongerProvides
+from zope.interface import alsoProvides
 from StringIO import StringIO
 from zope.interface import implements
 from zope.component import getSiteManager
@@ -26,31 +23,49 @@ from plone.i18n.normalizer.interfaces import IIDNormalizer
 from zope.app.container.btree import BTreeContainer
 from plone.app.async.interfaces import IAsyncService
 
-from collective.transcode.star.interfaces import ITranscodeTool, ITranscoded, ITranscodedEvent
+from collective.transcode.star.interfaces import ITranscodeTool
+from collective.transcode.star.interfaces import ITranscoded
+from collective.transcode.star.interfaces import ITranscodedEvent
+
 log = logging.getLogger('collective.transcode')
 
-def transcode_request(obj, fieldName, UID, payload, secret, address, profile, options, portal_url): 
+
+def transcode_request(obj, fieldName, UID,
+                      payload, secret, address, profile,
+                      options, portal_url):
     "Encrypt and send the transcode request"
     try:
         transcodeServer = xmlrpclib.ServerProxy(address, allow_none=True)
     except Exception, e:
-        log.error(u"Could not connect to transcode daemon %s: %s" % (address, e))
+        msg = u"Could not connect to transcode daemon %s: %s" % (address, e)
+        log.error(msg)
         return
-    payload = {'key':b64encode(encrypt(str(payload), secret))}
+    payload = {
+        'key': b64encode(encrypt(str(payload), secret))
+    }
     jobId = transcodeServer.transcode(payload, profile, options, portal_url)
     tt = getUtility(ITranscodeTool)
     if not jobId or jobId.startswith('ERROR'):
-        log.warn(u'Could not get jobId from daemon %s for profile %s and input %s. Result %s' % (address, profile, payload, jobId))
+        msg = u"""Could not get jobId from daemon %s
+        for profile %s and input %s. Result %s""" % (address,
+                                                     profile,
+                                                     payload,
+                                                     jobId)
+        log.warn(msg)
         tt[UID][fieldName][profile]['status'] = jobId or 'failed'
     tt[UID][fieldName][profile]['jobId'] = jobId
-    log.info(u"added profile %s for field %s and content type %s in transcode queue" % ( profile, fieldName, obj.absolute_url()))
+    msg = u"""added profile %s for field %s
+    and content type %s in transcode queue""" % (profile,
+                                                 fieldName,
+                                                 obj.absolute_url())
+    log.info(msg)
 
 
 class TranscodeTool(BTreeContainer):
-    
+
     implements(ITranscodeTool)
 
-    def add(self, obj, fieldNames = [], force = False, profiles = []):
+    def add(self, obj, fieldNames=[], force=False, profiles=[]):
         """
            Add a portal object to the transcode queue
         """
@@ -76,7 +91,8 @@ class TranscodeTool(BTreeContainer):
             transcodeServer = xmlrpclib.ServerProxy(address)
             daemonProfiles = transcodeServer.getAvailableProfiles()
         except Exception, e:
-            log.error(u"Could not connect to transcode daemon %s: %s" % (address, e))
+            msg = u"Could not connect to transcode daemon %s: %s" % (address, e)
+            log.error(msg)
             return
 
         supported_profiles = self.getProfiles()
@@ -86,64 +102,89 @@ class TranscodeTool(BTreeContainer):
             profiles = [p for p in profiles if p in supported_profiles]
             
         secret = self.secret()
+        mime_types = self.supported_mime_types()
 
         for profile in profiles:
             if profile not in daemonProfiles:
-                log.warn(u"profile %s not supported by the transcode daemon at %s" % (profile, address))
+                msg = u"""profile %s not supported by
+                the transcode daemon at %s""" % (profile, address)
+                log.warn(msg)
                 continue
             for field in fields:
                 fieldName = field.getName()
                 fileType = field.getContentType(obj)
-                if fileType not in self.supported_mime_types():
-                    log.warn('skipping %s: %s not in %s' %(obj, fileType, self.supported_mime_types()))
+                if fileType not in mime_types:
+                    msg = 'skipping %s: %s not in %s' % (obj,
+                                                         fileType,
+                                                         mime_types)
+                    log.warn(msg)
                     continue
                 data = StringIO(field.get(obj).data)
                 md5sum = md5(data.read()).hexdigest()
-                # Check if there is already a transcode request pending for the given field and profile
+                # Check if there is already a transcode request pending
+                # for the given field and profile
                 if self.is_pending(UID, fieldName, profile, md5sum):
-                    log.info(u'transcode request already pending for %s:%s:%s:%s' % (UID, fieldName, profile,md5sum))
-                    if not force: 
+                    msg = u"""transcode request already pending for
+                     %s:%s:%s:%s""" % (UID,
+                                       fieldName,
+                                       profile,
+                                       md5sum)
+                    log.info(msg)
+                    if not force:
                         continue
                     else:
                         log.info('forcing retranscode')
                 if self.is_transcoded(UID, fieldName, profile, md5sum):
-                    log.info(u'transcode request already finished for %s:%s:%s:%s' % (UID, fieldName, profile,md5sum))
-                    if not force: 
+                    msg = u"""transcode request already finished for
+                     %s:%s:%s:%s""" % (UID,
+                                       fieldName,
+                                       profile,
+                                       md5sum)
+                    log.info(msg)
+                    if not force:
                         continue
                     else:
                         log.info('forcing retranscode')
 
-                portal_url = getToolByName(obj,'portal_url')()
-                filePath = obj.absolute_url() 
+                portal_url = getToolByName(obj, 'portal_url')()
+                filePath = obj.absolute_url()
                 fileUrl = portal_url + '/@@serve_daemon'
                 fileType = field.getContentType(obj)
                 # transliteration of stange filenames
-                fileName = field.getFilename(obj)                
+                fileName = field.getFilename(obj)
                 norm = queryUtility(IIDNormalizer)
                 fileName = norm.normalize(fileName.decode('utf-8'))
 
                 options = dict()
                 payload = {
-                          'path' : filePath,
-                          'url' : fileUrl,
-                          'type' : fileType,
-                          'fieldName' : fieldNames and fieldName or '', # don't send fieldName if it's the primary field
-                          'fileName' : fileName,
-                          'uid' : UID,
-                        }
+                    'path': filePath,
+                    'url': fileUrl,
+                    'type': fileType,
+                    # don't send fieldName if it's the primary field
+                    'fieldName': fieldNames and fieldName or '',
+                    'fileName': fileName,
+                    'uid': UID,
+                }
 
-                # Transcode request about to be sent. Write it down in the TranscodeTool
+                # Transcode request about to be sent.
+                # Write it down in the TranscodeTool
                 objRec = self.get(UID, None)
                 if not objRec:
                     self[UID] = PersistentDict()
-                    log.info(u"adding object %s in TranscodeTool" % obj.absolute_url())
+                    msg = u"adding object %s in TranscodeTool" % obj.absolute_url()
+                    log.info(msg)
 
                 fieldRec = self[UID].get(fieldName, None)
-                if not fieldRec: 
-                    self[UID][fieldName]=PersistentDict()
-                self[UID][fieldName][profile] = PersistentDict({'jobId' : None, 'address' : address, 'status' : 'pending', 'start' : datetime.now(), 'md5' : md5sum})
+                if not fieldRec:
+                    self[UID][fieldName] = PersistentDict()
+                self[UID][fieldName][profile] = PersistentDict({
+                    'jobId': None,
+                    'address': address,
+                    'status': 'pending',
+                    'start': datetime.now(),
+                    'md5': md5sum
+                })
                 
-
                 #from zope.app.component.hooks import getSite
                 #request = getSite().REQUEST
                 #if request.has_key('video_file_file') and request.has_key('form.button.save'):
@@ -152,7 +193,11 @@ class TranscodeTool(BTreeContainer):
 
                 async = getUtility(IAsyncService)
                 temp_time = datetime.now(pytz.UTC) + timedelta(seconds=2)
-                job = async.queueJobWithDelay(None, temp_time, transcode_request, obj, fieldName, UID, payload, secret, address, profile, options, portal_url)
+                job = async.queueJobWithDelay(None, temp_time, transcode_request,
+                                              obj, fieldName, UID, payload,
+                                              secret, address, profile, options,
+                                              portal_url)
+                job  # pep8
         return
 
     def getProgress(self, jobId):
