@@ -7,7 +7,9 @@ from zope.component import getSiteManager
 from zope.interface.interfaces import IInterface
 from zope.component.interfaces import ObjectEvent
 from Products.CMFCore.interfaces import IContentish
-from collective.transcode.star.interfaces import ITranscodeTool, ITranscodedEvent
+from collective.transcode.star.interfaces import ITranscodeTool
+from collective.transcode.star.interfaces import ITranscodedEvent
+from collective.transcode.star.utility import get_settings
 from zope.lifecycleevent.interfaces import IObjectModifiedEvent  
 from zope.lifecycleevent.interfaces import IObjectCreatedEvent 
 from plone.registry.interfaces import IRegistry 
@@ -31,8 +33,8 @@ def editFile(obj, event):
     if not obj.UID():
         return
     try:
-        registry = getUtility(IRegistry)
-        types = registry['collective.transcode.star.interfaces.ITranscodeSettings.portal_types']
+        settings = get_settings()
+        types = settings.portal_types
         newTypes = [t.split(':')[0] for t in types]
         if unicode(obj.portal_type) not in newTypes:
             return
@@ -54,8 +56,8 @@ def deleteTranscodedVideos(obj, event):
    if not obj.UID():
         return
    try:
-        registry = getUtility(IRegistry)
-        types = registry['collective.transcode.star.interfaces.ITranscodeSettings.portal_types']
+        settings = get_settings()
+        types = settings.portal_types
         newTypes = [t.split(':')[0] for t in types]
         if unicode(obj.portal_type) not in newTypes:
             return
