@@ -1,13 +1,25 @@
-from Products.Five.browser import BrowserView
-from collective.transcode.star.interfaces import ICallbackView, ITranscodeTool
-from zope.interface import implements
-from zope.component import getUtility
-from plone.registry.interfaces import IRegistry
-from collective.transcode.star.crypto import encrypt, decrypt
 from base64 import b64encode, b64decode
 from AccessControl import getSecurityManager
 from AccessControl.SecurityManagement import newSecurityManager
+
+from zope.interface import implements
+from zope.interface import Interface
+from zope.component import getUtility
+
+from Products.Five.browser import BrowserView
 from Products.CMFCore.utils import getToolByName
+
+from plone.registry.interfaces import IRegistry
+from plone.memoize.view import memoize_contextless
+from plone.memoize.view import memoize
+
+from collective.transcode.star.crypto import encrypt
+from collective.transcode.star.crypto import decrypt
+from collective.transcode.star.interfaces import ICallbackView
+from collective.transcode.star.interfaces import ITranscodeTool
+from collective.transcode.star.utility import get_settings
+from collective.transcode.star import _
+
 import logging
 
 try:
@@ -42,7 +54,8 @@ class EmbedView(BrowserView):
     def canDownload(self):
         registry = getUtility(IRegistry)
         return registry.get('collective.transcode.star.interfaces.ITranscodeSettings.showDownload', True)
-    
+
+
 class CallbackView(BrowserView):
     """
         Handle callbacks and errbacks from transcode daemon
@@ -83,7 +96,7 @@ class ServeDaemonView(BrowserView):
         self.request = request
 
     def __call__(self):
-        try: 
+        try:
             tt = getUtility(ITranscodeTool)
             key = self.request['key']
             input = decrypt(b64decode(key), tt.secret())
@@ -112,3 +125,114 @@ class ServeDaemonView(BrowserView):
         except Exception as e:
             log.error('Unauthorized file request: %s' % e)
             return
+
+
+class IHelpers(Interface):
+
+    def settings():
+        """ return global settings
+        """
+
+    def tool():
+        """ return transcode tool
+        """
+
+    def profiles():
+        """ return transcode profiles for context
+        """
+
+    def showDownload():
+        """ return true if user can download video
+        """
+
+    def download_links(video_only=1):
+        """ return download links for context
+        """
+
+    def fieldname():
+        """ return field name
+        """
+
+    def display_size():
+        """ return video display size
+        """
+
+    def get_progress(profile_name):
+        """ return trancoding progress for given profile
+        """
+
+
+# TODO: make this configurable
+PROFILES_TITLE = {
+    'mp4-low': _(u"MP4 Low Resolution"),
+    'mp4-high': _(u"MP4 High Resolution"),
+    'webm-low': _(u"WEBM Low Resolution"),
+    'webm-high': _(u"WEBM High Resolution"),
+}
+
+IMG_PROFILES = ['jpeg', ]
+
+
+class Helpers(BrowserView):
+
+    implements(IHelpers)
+
+    @property
+    @memoize_contextless
+    def settings(self):
+        return get_settings()
+
+    @property
+    @memoize_contextless
+    def tool(self):
+        return getUtility(ITranscodeTool)
+
+    @property
+    @memoize
+    def info(self):
+        uid = self.context.UID()
+        return self.tool[uid]
+
+    def get_progress(self, profile_name):
+        return self.tool.getProgress(self.info[profile_name]['jobId'])
+
+    @property
+    def fieldname(self):
+        # what if we have more fnames???
+        return self.info.keys()[0]
+
+    @property
+    @memoize
+    def profiles(self):
+        try:
+            # what if we have more fnames???
+            return self.info[self.fieldname]
+        except:
+            return {}
+
+    def showDownload(self):
+        return self.settings.showDownload
+
+    @memoize
+    def download_links(self, video_only=True):
+        links = {}
+        # href string:${view/profiles/mp4-low/address|nothing}/${view/profiles/mp4-low/path|nothing};
+        for name, data in self.profiles.iteritems():
+            if video_only and name in IMG_PROFILES:
+                continue
+            if data['address']:
+                links[name] = {
+                    'title': PROFILES_TITLE.get(name, name),
+                    'url': data['address'] + '/' + data['path'],
+                }
+        return links
+
+    def display_size(self):
+        size = self.context[self.fieldname].get_size()
+        size_kb = size / 1024
+        size_mb = size_kb / 1024
+        display_size_mb = '{0:n} MB'.format(size_mb) if size_mb > 0 else ''
+        display_size_kb = '{0:n} kB'.format(size_kb) if size_kb > 0 else ''
+        display_size_bytes = '{0:n} bytes'.format(size)
+        display_size = display_size_mb or display_size_kb or display_size_bytes
+        return display_size
