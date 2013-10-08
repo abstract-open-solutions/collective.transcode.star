@@ -34,26 +34,27 @@ class EmbedView(BrowserView):
     """
         Embedded video vew
     """
+
+    @property
+    def helpers(self):
+        return self.context.restrictedTraverse('@@transcode-helpers')
+
     def jpeg(self):
-        tt = getUtility(ITranscodeTool)
-        uid = self.context.UID()
         try:
-            return tt[uid][tt[uid].keys()[0]]['jpeg']['address'] + '/' + \
-                    tt[uid][tt[uid].keys()[0]]['jpeg']['path']
+            url = self.helpers.download_links()['jpeg']
+            print url
+            return url
         except:
             return False
 
     def profiles(self):
-        tt = getUtility(ITranscodeTool)
-        uid = self.context.UID()
         try:
-            return tt[uid][tt[uid].keys()[0]]
+            return self.helpers.profiles
         except:
-            return []
+            return
 
     def canDownload(self):
-        registry = getUtility(IRegistry)
-        return registry.get('collective.transcode.star.interfaces.ITranscodeSettings.showDownload', True)
+        return self.helpers.showDownload()
 
 
 class CallbackView(BrowserView):
