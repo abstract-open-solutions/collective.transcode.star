@@ -221,6 +221,10 @@ class Helpers(BrowserView):
         for name, data in self.profiles.iteritems():
             if video_only and name in IMG_PROFILES:
                 continue
+            if not data.get('path'):
+                # something went wrong with transcoding of this profile
+                log.info('transcode profile error: ' + data['status'])
+                continue
             if data['address']:
                 links[name] = {
                     'title': PROFILES_TITLE.get(name, name),
