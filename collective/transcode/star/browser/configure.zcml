@@ -49,7 +49,7 @@
 
   <browser:page
       name="transcode-helpers"
-      for="collective.transcode.star.interfaces.ITranscoded"
+      for="*"
       class=".views.Helpers"
       allowed_interface=".views.IHelpers"
       permission="zope2.View"
