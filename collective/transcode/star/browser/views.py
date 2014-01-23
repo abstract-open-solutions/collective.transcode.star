@@ -1,3 +1,8 @@
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
 from base64 import b64encode, b64decode
 from AccessControl import getSecurityManager
 from AccessControl.SecurityManagement import newSecurityManager
@@ -216,8 +221,17 @@ class Helpers(BrowserView):
 
     @memoize
     def download_links(self, video_only=True):
-        links = {}
-        # href string:${view/profiles/mp4-low/address|nothing}/${view/profiles/mp4-low/path|nothing};
+        # let's keep them ordered
+        links = OrderedDict()
+        # add original link
+        if self.fieldname:
+            title = _(u'Original')
+            title += ' (%s)' % self.display_size()
+            links['original'] = {
+                'title': title,
+                'url': '%s/at_download/%s' % (self.context.absolute_url(),
+                                              self.fieldname),
+            }
         for name, data in self.profiles.iteritems():
             if video_only and name in IMG_PROFILES:
                 continue
@@ -230,6 +244,7 @@ class Helpers(BrowserView):
                     'title': PROFILES_TITLE.get(name, name),
                     'url': data['address'] + '/' + data['path'],
                 }
+
         return links
 
     def display_size(self):
