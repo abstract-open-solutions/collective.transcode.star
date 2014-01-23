@@ -200,7 +200,7 @@ class Helpers(BrowserView):
         return self.tool[uid]
 
     def get_progress(self, profile_name):
-        return self.tool.getProgress(self.info[profile_name]['jobId'])
+        return self.tool.getProgress(self.profiles[profile_name]['jobId'])
 
     @property
     def fieldname(self):
