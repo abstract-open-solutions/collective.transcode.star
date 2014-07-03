@@ -64,4 +64,12 @@
       class=".viewlets.TranscodeViewlet"
   />
 
+  <browser:page
+    for="collective.transcode.star.interfaces.ITranscoded"
+    name="render-player"
+    class=".views.RenderPlayer"
+    permission="zope2.View"
+    template="render_player.pt"
+    />
+
 </configure>

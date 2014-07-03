@@ -256,3 +256,23 @@ class Helpers(BrowserView):
         display_size_bytes = '{0:n} bytes'.format(size)
         display_size = display_size_mb or display_size_kb or display_size_bytes
         return display_size
+
+
+class RenderPlayer(BrowserView):
+
+    @property
+    def helpers(self):
+        return self.context.restrictedTraverse('@@transcode-helpers')
+
+    def update(self):
+        try:
+            self.fieldname = self.helpers.fieldname
+            self.profiles = self.helpers.profiles
+        except KeyError:
+            pass
+
+    def display_size(self):
+        return self.helpers.display_size()
+
+    def show_subs(self):
+        return self.helpers.settings.subtitles
