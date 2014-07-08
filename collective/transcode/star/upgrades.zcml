@@ -1,0 +1,15 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:gs="http://namespaces.zope.org/genericsetup"
+    i18n_domain="collective.transcode.star">
+
+    <gs:upgradeStep
+        title="Transcode Star - Upgrade to 1.0.2"
+        description="collective.transcode.star updates"
+        source="*"
+        destination="1002"
+        handler=".upgrades.upgrade_to_1002"
+        profile="collective.transcode.star:default"
+        />
+
+</configure>
