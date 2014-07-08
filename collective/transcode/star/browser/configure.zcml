@@ -10,6 +10,11 @@
       directory="images"
       />
 
+  <browser:resource
+      name="collective.transcode.css"
+      file="star.css"
+      />
+
   <!-- Resource directory for js -->
   <browser:resourceDirectory
       name="collective.transcode.js"

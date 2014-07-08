@@ -2,194 +2,91 @@
                        height python:int(int(width)/1.75);
                        helpers view/helpers">
 
-<video id="main-video" controls
-    tal:define="mp4 string:${helpers/profiles/mp4-low/address|nothing}/${helpers/profiles/mp4-low/path|nothing};
-                webm string:${helpers/profiles/webm-low/address|nothing}/${helpers/profiles/webm-low/path|nothing};
-                jpeg view/context/thumbnailImage/absolute_url|string:${helpers/profiles/jpeg/address|nothing}/${helpers/profiles/jpeg/path|nothing}"
-    tal:attributes="poster jpeg; width width; height height"
-    controls="controls" preload="metadata">
-   <source tal:condition="helpers/profiles/webm-low/path|helpers/profiles/webm-high/path|nothing"
-       tal:attributes="src webm" type="video/webm" />
-   <source tal:condition="helpers/profiles/mp4-low/path|helpers/profiles/mp4-high/path|nothing"
-       tal:attributes="src mp4" type="video/mp4" />
-   <object tal:condition="helpers/profiles/mp4-low/path|helpers/profiles/mp4-high/path|nothing"
-       tal:attributes="width width; height height"
-       type="application/x-shockwave-flash"
-       data="++resource++collective.mediaelementjs/flashmediaelement.swf">
-       <param name="movie" value="++resource++collective.mediaelementjs/flashmediaelement.swf" />
-       <param name="flashvars" tal:attributes="value string:controls=true&poster=${jpeg}&file=${mp4}" />
-       <!-- Image as a last resort -->
-       <img class="splash-screen"
-            tal:attributes="src jpeg; width width; height height" title="No video playback capabilities" />
-   </object>
-</video>
-<style tal:content="string: div.videobar{width: ${width}px}" />
-<style>
-    div.videobar {
-        position: relative;
-        height:29px;
-        background: url('++resource++collective.transcode.images/gradient_light.png') repeat-x scroll 0 0 #333333 !important
-    }
+<div class="video-wrapper">
+    <video id="main-video" controls
+        style="width: 100%; height: 100%;"
+        tal:define="mp4 string:${helpers/profiles/mp4-low/address|nothing}/${helpers/profiles/mp4-low/path|nothing};
+                    webm string:${helpers/profiles/webm-low/address|nothing}/${helpers/profiles/webm-low/path|nothing};
+                    jpeg view/context/thumbnailImage/absolute_url|string:${helpers/profiles/jpeg/address|nothing}/${helpers/profiles/jpeg/path|nothing}"
+        tal:attributes="poster jpeg; width width; height height"
+        controls="controls" preload="metadata">
+       <source tal:condition="helpers/profiles/webm-low/path|helpers/profiles/webm-high/path|nothing"
+           tal:attributes="src webm" type="video/webm" />
+       <source tal:condition="helpers/profiles/mp4-low/path|helpers/profiles/mp4-high/path|nothing"
+           tal:attributes="src mp4" type="video/mp4" />
+       <object tal:condition="helpers/profiles/mp4-low/path|helpers/profiles/mp4-high/path|nothing"
+           tal:attributes="width width; height height"
+           type="application/x-shockwave-flash"
+           data="++resource++collective.mediaelementjs/flashmediaelement.swf">
+           <param name="movie" value="++resource++collective.mediaelementjs/flashmediaelement.swf" />
+           <param name="flashvars" tal:attributes="value string:controls=true&poster=${jpeg}&file=${mp4}" />
+           <!-- Image as a last resort -->
+           <img class="splash-screen"
+                tal:attributes="src jpeg; width width; height height" title="No video playback capabilities" />
+       </object>
+    </video>
 
-    div.videobar span {
-        padding: 7px 10px;
-        border-left: 1px solid #666666 !important;
-        position: relative;
-        top: 5px;
-    }
-
-    div#share-box a{
-        border-bottom-width: 0px !important;
-    }
-
-    div#share-box ul {
-        float: left;
-        margin: 0;
-    }
-
-    div.videobar a {
-        color: #FFFFFF;
-        font-size: 13px;
-    }
-
-    div.videobar a:hover span{
-        background: none repeat scroll 0 0 #333333 !important;
-        text-decoration: underline;
-        color: #FFFFFF !important;
-    }
-
-    div.download, div.share, div.hi-lo {
-        float:right;
-        height:29px;
-        z-index: 1000;
-    }
-
-    div.embed-box {
-        font-size:75%;
-        display: inline;
-        float: right;
-    }
-
-    div.embed-box textarea {
-        height: 40px;
-        display: inline;
-        width: 215px !important;
-    }
-
-    ul#dl-links{
-        clear:both;
-        position: absolute;
-        right: 0px;
-        top: 29px;
-        background: none repeat scroll 0 0 #333333 !important;
-        z-index: 1000;
-        width: 181px !important;
-        padding: 10px;
-    }
-
-    div#share-box{
-        position: absolute;
-        right: 0px;
-        top: 29px;
-        clear:both;
-        background: none repeat scroll 0 0 #333333 !important;
-        z-index: 1000;
-        padding: 10px;
-        width:330px !important;
-        height:40px;
-        color: #fff;
-    }
-
-    div#share-box li{
-        list-style: none;
-        display: inline;
-    }
-
-    ul#dl-links li {
-        list-style: none;
-        display: block;
-    }
-
-    ul#dl-links a {
-        color: #fff !important;
-        text-decoration: none;
-        border-bottom: none !important;
-    }
-
-    ul#dl-links a:hover {
-        text-decoration: underline;
-        color: #fff !important;
-
-    }
-
-    div.unisubs-videoTab a span.unisubs-tabTextShare {
-        display: none !important;
-    }
-
-    div.unisubs-videoTab-anchoring {
-       width: 150px !important;
-    }
-</style>
-<div class="videobar">
-    <div class="hi-lo" tal:condition="helpers/profiles/webm-high/path|nothing">
-        <a id="player-low" style="display:none">
-            <span>View Standard Quality</span>
-        </a>
-        <a id="player-high">
-            <span>View High Quality</span>
-        </a>
-    </div>
-    <div class="download">
-        <a id="download">
-            <span>Download</span>
-        </a>
-    </div>
-    <div class="share">
-        <a id="share">
-            <span>Share</span>
-        </a>
-    </div>
-
-    <tal:block tal:condition="helpers/showDownload">
-        <ul id="dl-links"
-            style="display:none"
-            tal:condition="helpers/fieldname|nothing"
-            tal:define="download_links helpers/download_links">
-            <li tal:repeat="name download_links/keys">
-                <a tal:define="dlink python:download_links[name]"
-                   class="original"
-                   data-profilename="original"
-                   tal:attributes="href             dlink/url;
-                                   title            dlink/title;
-                                   class            name;
-                                   data-profilename name">
-                    <span tal:content="dlink/title" />
-                </a>
-            </li>
-        </ul>
-    </tal:block>
-
-    <div id="share-box" style="display:none">
-        <div class="embed-box">
-            Embed <textarea rows="1" onclick="this.focus();this.select();"><span tal:replace="string:<iframe src='${here/absolute_url}/embed_view' frameborder='0' width='630' height='460'></iframe>" /></textarea>
+    <div class="videobar">
+        <div class="hi-lo" tal:condition="helpers/profiles/webm-high/path|nothing">
+            <a id="player-low" style="display:none">
+                <span>View Standard Quality</span>
+            </a>
+            <a id="player-high">
+                <span>View High Quality</span>
+            </a>
         </div>
-        <ul>
-            <li class="social">
-                <a tal:attributes="href string:http://www.twitter.com/share?url=${here/absolute_url}"
-                   target="_blank"
-                   class="twitter-share-button"
-                   data-lang="en">
-                   <img src="++resource++collective.transcode.images/twitter.png" />
-                </a>
-            </li>
-            <li class="social">
-                <a tal:attributes="href string:http://www.facebook.com/share.php?u=${here/absolute_url}"
-                   target='_blank'>
-                    <img src='++resource++collective.transcode.images/facebook.png' />
-                </a>
-            </li>
-            <li><a class="unisubs" style="display:none" target="_blank"><img src="++resource++collective.transcode.images/unisubs.png" /></a></li>
-        </ul>
+        <div class="download">
+            <a id="download">
+                <span>Download</span>
+            </a>
+        </div>
+        <div class="share">
+            <a id="share">
+                <span>Share</span>
+            </a>
+        </div>
+
+        <tal:block tal:condition="helpers/showDownload">
+            <ul id="dl-links"
+                style="display:none"
+                tal:condition="helpers/fieldname|nothing"
+                tal:define="download_links helpers/download_links">
+                <li tal:repeat="name download_links/keys">
+                    <a tal:define="dlink python:download_links[name]"
+                       class="original"
+                       data-profilename="original"
+                       tal:attributes="href             dlink/url;
+                                       title            dlink/title;
+                                       class            name;
+                                       data-profilename name">
+                        <span tal:content="dlink/title" />
+                    </a>
+                </li>
+            </ul>
+        </tal:block>
+
+        <div id="share-box" style="display:none">
+            <div class="embed-box">
+                Embed <textarea rows="1" onclick="this.focus();this.select();"><span tal:replace="string:<iframe src='${here/absolute_url}/embed_view' frameborder='0' width='630' height='460'></iframe>" /></textarea>
+            </div>
+            <ul>
+                <li class="social">
+                    <a tal:attributes="href string:http://www.twitter.com/share?url=${here/absolute_url}"
+                       target="_blank"
+                       class="twitter-share-button"
+                       data-lang="en">
+                       <img src="++resource++collective.transcode.images/twitter.png" />
+                    </a>
+                </li>
+                <li class="social">
+                    <a tal:attributes="href string:http://www.facebook.com/share.php?u=${here/absolute_url}"
+                       target='_blank'>
+                        <img src='++resource++collective.transcode.images/facebook.png' />
+                    </a>
+                </li>
+                <li><a class="unisubs" style="display:none" target="_blank"><img src="++resource++collective.transcode.images/unisubs.png" /></a></li>
+            </ul>
+        </div>
     </div>
 </div>
 
