@@ -9,8 +9,6 @@
 
 <head>
     <tal:block>
-        <meta name="medium" content="video" />
-        <meta name="title" tal:attributes="content here/title" />
         <meta name="description" tal:attributes="content here/description" />
         <link rel="image_src" tal:condition="view/jpeg" tal:attributes="href view/jpeg" />
     </tal:block>

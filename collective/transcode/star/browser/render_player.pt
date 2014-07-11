@@ -22,6 +22,7 @@
            <param name="flashvars" tal:attributes="value string:controls=true&poster=${jpeg}&file=${mp4}" />
            <!-- Image as a last resort -->
            <img class="splash-screen"
+                alt="Splash screen"
                 tal:attributes="src jpeg; width width; height height" title="No video playback capabilities" />
        </object>
     </video>
@@ -75,13 +76,13 @@
                        target="_blank"
                        class="twitter-share-button"
                        data-lang="en">
-                       <img src="++resource++collective.transcode.images/twitter.png" />
+                       <img alt="Twitter icon" src="++resource++collective.transcode.images/twitter.png" />
                     </a>
                 </li>
                 <li class="social">
                     <a tal:attributes="href string:http://www.facebook.com/share.php?u=${here/absolute_url}"
                        target='_blank'>
-                        <img src='++resource++collective.transcode.images/facebook.png' />
+                        <img alt="Facebook icon" src='++resource++collective.transcode.images/facebook.png' />
                     </a>
                 </li>
                 <li><a class="unisubs" style="display:none" target="_blank"><img src="++resource++collective.transcode.images/unisubs.png" /></a></li>
