@@ -14,14 +14,13 @@ from zope.component import getUtility
 from Products.Five.browser import BrowserView
 from Products.CMFCore.utils import getToolByName
 
-from plone.registry.interfaces import IRegistry
 from plone.memoize.view import memoize_contextless
 from plone.memoize.view import memoize
 
-from collective.transcode.star.crypto import encrypt
 from collective.transcode.star.crypto import decrypt
 from collective.transcode.star.interfaces import ICallbackView
 from collective.transcode.star.interfaces import ITranscodeTool
+from collective.transcode.star.interfaces import ITranscoded
 from collective.transcode.star.utility import get_settings
 from collective.transcode.star import _
 
@@ -29,13 +28,15 @@ import logging
 
 try:
     from collective.transcode.burnstation.interfaces import IBurnTool
-    BURNSTATION_SUPPORT=True
+    BURNSTATION_SUPPORT = True
 except ImportError:
-    BURNSTATION_SUPPORT=False
+    BURNSTATION_SUPPORT = False
 
 log = logging.getLogger('collective.transcode')
 
+
 class EmbedView(BrowserView):
+
     """
         Embedded video vew
     """
@@ -167,6 +168,10 @@ class IHelpers(Interface):
         """ return trancoding progress for given profile
         """
 
+    def is_transcoded():
+        """ return ttrue if the video has been transcoded.
+        """
+
 
 # TODO: make this configurable
 PROFILES_TITLE = {
@@ -237,14 +242,15 @@ class Helpers(BrowserView):
                 continue
             if not data.get('path'):
                 # something went wrong with transcoding of this profile
-                log.info('transcode profile error: ' + data['status'])
+                msg = 'transcode profile "%s" error: %s' % (name,
+                                                            data['status'])
+                log.info(msg)
                 continue
             if data['address']:
                 links[name] = {
                     'title': PROFILES_TITLE.get(name, name),
                     'url': data['address'] + '/' + data['path'],
                 }
-
         return links
 
     def display_size(self):
@@ -256,6 +262,9 @@ class Helpers(BrowserView):
         display_size_bytes = '{0:n} bytes'.format(size)
         display_size = display_size_mb or display_size_kb or display_size_bytes
         return display_size
+
+    def is_transcoded(self):
+        return ITranscoded.providedBy(self.context)
 
 
 class RenderPlayer(BrowserView):
