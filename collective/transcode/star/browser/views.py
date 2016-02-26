@@ -62,6 +62,18 @@ class EmbedView(BrowserView):
     def canDownload(self):
         return self.helpers.showDownload()
 
+    def __call__(self):
+        """Override X-Frame-Options.
+
+        cfr.: https://github.com/plone/plone.protect#clickjacking-protection
+        http://sgr.casaccia.enea.it/issuetracker/issue-tracker/551
+        """
+        self.request.response.setHeader(
+            'X-Frame-Options',
+            'ALLOW-FROM http://transcoder.webtv.enea.it'
+        )   
+        return super(self).__call__()
+
 
 class CallbackView(BrowserView):
     """
