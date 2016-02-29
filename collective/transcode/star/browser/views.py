@@ -72,7 +72,7 @@ class EmbedView(BrowserView):
             'X-Frame-Options',
             'ALLOW-FROM http://transcoder.webtv.enea.it'
         )   
-        return super(self).__call__()
+        return super(EmbedView, self).__call__()
 
 
 class CallbackView(BrowserView):
