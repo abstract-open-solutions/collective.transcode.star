@@ -3,8 +3,7 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 
-from base64 import b64encode, b64decode
-from AccessControl import getSecurityManager
+from base64 import b64decode
 from AccessControl.SecurityManagement import newSecurityManager
 
 from zope.interface import implements
@@ -69,9 +68,15 @@ class EmbedView(BrowserView):
         http://sgr.casaccia.enea.it/issuetracker/issue-tracker/551
         """
         self.request.response.setHeader(
-            'X-Frame-Options',
-            'ALLOW-FROM http://transcoder.webtv.enea.it'
-        )   
+            "X-Frame-Options",
+            "ALLOW-FROM *.enea.it"
+        )
+
+        self.request.response.setHeader(
+            "Content-Security-Policy",
+            "frame-ancestors 'self' *.enea.it"
+        )
+
         return super(EmbedView, self).__call__()
 
 
