@@ -67,16 +67,7 @@ class EmbedView(BrowserView):
         cfr.: https://github.com/plone/plone.protect#clickjacking-protection
         http://sgr.casaccia.enea.it/issuetracker/issue-tracker/551
         """
-        self.request.response.setHeader(
-            "X-Frame-Options",
-            "ALLOW-FROM *.enea.it"
-        )
-
-        self.request.response.setHeader(
-            "Content-Security-Policy",
-            "frame-ancestors 'self' *.enea.it"
-        )
-
+        self.request.response.setHeader('X-Frame-Options', 'ALLOWALL')
         return super(EmbedView, self).__call__()
 
 
